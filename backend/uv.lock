@@ -179,6 +179,7 @@ dependencies = [
     { name = "llama-index-readers-docling" },
     { name = "llama-index-readers-file" },
     { name = "python-dotenv" },
+    { name = "rich" },
     { name = "vllm" },
     { name = "xlrd" },
 ]
@@ -195,6 +196,7 @@ requires-dist = [
     { name = "llama-index-readers-docling", specifier = ">=0.3.3" },
     { name = "llama-index-readers-file", specifier = ">=0.4.8" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "vllm", specifier = ">=0.9.0.1" },
     { name = "xlrd", specifier = ">=2.0.1" },
 ]
