@@ -1,0 +1,269 @@
+---
+description: This rule is helpful for UI design and implementation. MUST ALWAYS read it when you are requested to implement or adjust an UI view.
+globs: 
+alwaysApply: false
+---
+# UI Design Guidelines
+
+## Overview
+This document outlines the UI design guidelines for the RUC RAG Frontend application. The design system emphasizes simplicity, elegance, and attention to detail while maintaining a professional appearance suitable for administrative personnel.
+
+## Color System
+
+### Primary Color Palette (Deep Red Theme)
+The primary color system is based on a sophisticated deep red palette, reflecting the university's brand identity while maintaining a professional administrative appearance.
+
+```css
+/* Primary Red Colors */
+--red-50: #fef2f2
+--red-100: #fee2e2
+--red-200: #fecaca
+--red-300: #fca5a5
+--red-400: #f87171
+--red-500: #ef4444
+--red-600: #dc2626    /* Primary Brand Color */
+--red-700: #b91c1c    /* Primary Dark */
+--red-800: #991b1b    /* Primary Darker */
+--red-900: #7f1d1d    /* Primary Darkest */
+--red-950: #450a0a
+```
+
+### Neutral Colors
+```css
+/* Neutral Grays */
+--gray-50: #f9fafb
+--gray-100: #f3f4f6
+--gray-200: #e5e7eb
+--gray-300: #d1d5db
+--gray-400: #9ca3af
+--gray-500: #6b7280
+--gray-600: #4b5563    /* Text Secondary */
+--gray-700: #374151    /* Text Primary */
+--gray-800: #1f2937    /* Text Dark */
+--gray-900: #111827    /* Text Darkest */
+--gray-950: #030712
+```
+
+### Semantic Colors
+```css
+/* Success Colors */
+--green-600: #059669
+--green-700: #047857
+
+/* Warning Colors */
+--yellow-600: #d97706
+--yellow-700: #b45309
+
+/* Error Colors */
+--red-600: #dc2626
+--red-700: #b91c1c
+
+/* Info Colors */
+--blue-600: #2563eb
+--blue-700: #1d4ed8
+```
+
+## Icon System
+
+### Using the Icon Component
+Always use the [Icon.vue](mdc:src/components/common/Icon.vue) component for all icons. Reference [IconExample.vue](mdc:src/components/common/IconExample.vue) for usage examples.
+
+### Icon Guidelines
+- **Default Variant**: Use `outlined` for most cases
+- **Default Size**: Use `md` (24px) for inline text, `lg` (32px) for buttons
+- **Color**: Use semantic colors or `inherit` to match text color
+- **Consistency**: Stick to one variant style within the same UI section
+
+```vue
+<!-- Correct Usage Examples -->
+<Icon name="home" />
+<Icon name="search" size="lg" color="primary" />
+<Icon name="favorite" :fill="1" variant="rounded" />
+
+<!-- Button with Icon -->
+<button class="flex items-center gap-2">
+  <Icon name="add" size="sm" />
+  Add Item
+</button>
+```
+
+## Tailwind CSS Best Practices
+
+### Spacing System
+Use consistent spacing following the 4px base unit:
+- `space-x-2` (8px) - Tight spacing
+- `space-x-4` (16px) - Default spacing
+- `space-x-6` (24px) - Comfortable spacing
+- `space-x-8` (32px) - Loose spacing
+
+### Typography Scale
+```css
+/* Headings */
+.text-3xl  /* 30px - Page titles */
+.text-2xl  /* 24px - Section titles */
+.text-xl   /* 20px - Subsection titles */
+.text-lg   /* 18px - Large text */
+.text-base /* 16px - Body text */
+.text-sm   /* 14px - Small text */
+.text-xs   /* 12px - Captions */
+```
+
+### Component Structure
+```vue
+<!-- Card Component Pattern -->
+<div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+  <div class="p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Title</h3>
+    <p class="text-gray-600">Content</p>
+  </div>
+</div>
+
+<!-- Button Patterns -->
+<button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors">
+  Primary Action
+</button>
+
+<button class="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors">
+  Secondary Action
+</button>
+```
+
+## Design Principles
+
+### 1. Simplicity & Minimalism
+- Use ample white space
+- Avoid unnecessary decorative elements
+- Focus on content hierarchy
+- Clean, geometric shapes
+
+### 2. Consistency
+- Maintain consistent spacing patterns
+- Use unified border radius (8px for cards, 6px for buttons)
+- Consistent icon sizing and placement
+- Unified color application
+
+### 3. Attention to Detail
+- Subtle shadows for depth (`shadow-sm`, `shadow-md`)
+- Smooth transitions (`transition-colors`, `duration-200`)
+- Proper focus states for accessibility
+- Consistent hover effects
+
+### 4. Professional Hierarchy
+```vue
+<!-- Page Layout Pattern -->
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Header content -->
+    </div>
+  </header>
+  
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+      <!-- Page content -->
+    </div>
+  </main>
+</div>
+```
+
+## Layout Guidelines
+
+### Grid System
+- Use CSS Grid for complex layouts
+- Use Flexbox for simple alignments
+- Prefer `grid-cols-12` for responsive grids
+- Use `gap-4` or `gap-6` for consistent spacing
+
+### Responsive Design
+```vue
+<!-- Responsive Pattern -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- Cards -->
+</div>
+
+<!-- Mobile-first approach -->
+<div class="text-sm md:text-base lg:text-lg">
+  Responsive text
+</div>
+```
+
+## Interactive Elements
+
+### States
+- **Default**: Base appearance
+- **Hover**: Subtle color darkening (`hover:bg-red-700`)
+- **Active**: Pressed state (`active:bg-red-800`)
+- **Focus**: Clear focus rings (`focus:ring-2 focus:ring-red-500`)
+- **Disabled**: Reduced opacity (`disabled:opacity-50`)
+
+### Transitions
+Always include smooth transitions for better user experience:
+```css
+.transition-colors     /* Color changes */
+.transition-all       /* All properties */
+.duration-200         /* Fast transitions */
+.duration-300         /* Standard transitions */
+```
+
+## Accessibility
+
+### Color Contrast
+- Ensure minimum 4.5:1 contrast ratio for normal text
+- Use 3:1 contrast ratio for large text
+- Test with color blindness simulators
+
+### Focus Management
+- Visible focus indicators on all interactive elements
+- Logical tab order
+- Skip links for navigation
+
+### Semantic HTML
+- Use proper heading hierarchy
+- Meaningful alt text for images/icons
+- ARIA labels where necessary
+
+## Component Patterns
+
+### Form Elements
+```vue
+<!-- Input Field -->
+<div class="space-y-1">
+  <label class="block text-sm font-medium text-gray-700">
+    Label
+  </label>
+  <input 
+    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+    type="text"
+  />
+</div>
+
+<!-- Select Dropdown -->
+<select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+  <option>Select option</option>
+</select>
+```
+
+### Navigation
+```vue
+<!-- Tab Navigation -->
+<nav class="flex space-x-8">
+  <a class="text-red-600 border-b-2 border-red-600 font-medium">
+    Active Tab
+  </a>
+  <a class="text-gray-500 hover:text-gray-700">
+    Inactive Tab
+  </a>
+</nav>
+```
+
+## Implementation Notes
+
+1. **Always use the Icon component** instead of raw Material Symbols
+2. **Prefer Tailwind utilities** over custom CSS
+3. **Test responsive behavior** on multiple screen sizes
+4. **Validate color contrast** in design tools
+5. **Use semantic HTML elements** for better accessibility
+
+Remember: The goal is to create a refined, professional interface that reflects the institutional nature of the application while maintaining modern usability standards.

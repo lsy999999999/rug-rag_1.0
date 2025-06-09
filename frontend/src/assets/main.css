@@ -1,0 +1,165 @@
+@import 'material-symbols';
+@import 'tailwindcss';
+
+@theme {
+  /* Primary Red Color Palette - Deep, stable red theme suitable for administrative use */
+  --color-red-50: oklch(0.983 0.008 17.38);
+  --color-red-100: oklch(0.962 0.02 17.717);
+  --color-red-200: oklch(0.924 0.041 18.334);
+  --color-red-300: oklch(0.871 0.075 19.571);
+  --color-red-400: oklch(0.8 0.125 22.216);
+  --color-red-500: oklch(0.724 0.158 25.331);
+  --color-red-600: oklch(0.577 0.245 27.325); /* Primary Brand Color */
+  --color-red-700: oklch(0.505 0.213 27.518);
+  --color-red-800: oklch(0.444 0.177 26.899);
+  --color-red-900: oklch(0.38 0.141 25.723);
+  --color-red-950: oklch(0.258 0.092 26.042);
+
+  /* Enhanced Neutral Colors for professional administrative interface */
+  --color-gray-50: oklch(0.99 0.001 247.858);
+  --color-gray-100: oklch(0.975 0.003 247.896);
+  --color-gray-200: oklch(0.935 0.008 255.508);
+  --color-gray-300: oklch(0.875 0.015 252.894);
+  --color-gray-400: oklch(0.72 0.025 256.788);
+  --color-gray-500: oklch(0.58 0.03 257.417);
+  --color-gray-600: oklch(0.47 0.028 257.281);
+  --color-gray-700: oklch(0.39 0.025 257.287);
+  --color-gray-800: oklch(0.31 0.022 260.031);
+  --color-gray-900: oklch(0.23 0.02 265.755);
+  --color-gray-950: oklch(0.15 0.018 264.695);
+
+  /* Administrative UI semantic colors */
+  --color-green-50: oklch(0.985 0.012 155.826);
+  --color-green-100: oklch(0.968 0.028 156.743);
+  --color-green-200: oklch(0.932 0.055 155.995);
+  --color-green-300: oklch(0.882 0.095 154.449);
+  --color-green-400: oklch(0.815 0.14 151.711);
+  --color-green-500: oklch(0.745 0.155 149.579);
+  --color-green-600: oklch(0.65 0.135 149.214);
+  --color-green-700: oklch(0.555 0.115 150.069);
+  --color-green-800: oklch(0.47 0.095 151.328);
+  --color-green-900: oklch(0.41 0.075 152.535);
+  --color-green-950: oklch(0.32 0.055 152.835);
+
+  --color-yellow-50: oklch(0.99 0.015 102.212);
+  --color-yellow-100: oklch(0.98 0.042 103.193);
+  --color-yellow-200: oklch(0.955 0.08 101.54);
+  --color-yellow-300: oklch(0.92 0.12 98.111);
+  --color-yellow-400: oklch(0.875 0.145 91.936);
+  --color-yellow-500: oklch(0.82 0.138 86.047);
+  --color-yellow-600: oklch(0.72 0.122 75.834);
+  --color-yellow-700: oklch(0.61 0.105 66.442);
+  --color-yellow-800: oklch(0.52 0.09 61.907);
+  --color-yellow-900: oklch(0.45 0.075 57.708);
+  --color-yellow-950: oklch(0.34 0.055 54.823);
+
+  --color-blue-50: oklch(0.978 0.008 254.604);
+  --color-blue-100: oklch(0.945 0.02 255.585);
+  --color-blue-200: oklch(0.9 0.038 254.128);
+  --color-blue-300: oklch(0.835 0.068 251.813);
+  --color-blue-400: oklch(0.75 0.105 254.624);
+  --color-blue-500: oklch(0.665 0.142 259.815);
+  --color-blue-600: oklch(0.58 0.165 262.881);
+  --color-blue-700: oklch(0.52 0.155 264.376);
+  --color-blue-800: oklch(0.46 0.135 265.638);
+  --color-blue-900: oklch(0.41 0.105 265.522);
+  --color-blue-950: oklch(0.3 0.075 266.522);
+
+  /* Administrative theme aliases for primary brand usage */
+  --color-primary-50: var(--color-red-50);
+  --color-primary-100: var(--color-red-100);
+  --color-primary-200: var(--color-red-200);
+  --color-primary-300: var(--color-red-300);
+  --color-primary-400: var(--color-red-400);
+  --color-primary-500: var(--color-red-500);
+  --color-primary-600: var(--color-red-600);
+  --color-primary-700: var(--color-red-700);
+  --color-primary-800: var(--color-red-800);
+  --color-primary-900: var(--color-red-900);
+  --color-primary-950: var(--color-red-950);
+
+  /* Semantic color aliases for consistent usage */
+  --color-success: var(--color-green-600);
+  --color-warning: var(--color-yellow-600);
+  --color-error: var(--color-red-600);
+  --color-info: var(--color-blue-600);
+
+  /* Administrative UI spacing and typography enhancements */
+  --font-family-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-family-mono:
+    'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  /* Enhanced shadow system for professional depth */
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.08), 0 4px 6px -4px oklch(0 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.08), 0 8px 10px -6px oklch(0 0 0 / 0.08);
+
+  /* Enhanced border radius for cohesive design */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+}
+
+/* Global styles for enhanced administrative UI */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  line-height: 1.6;
+  color: var(--color-gray-700);
+  background-color: var(--color-gray-50);
+}
+
+/* Enhanced focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+/* Professional link styling */
+a {
+  color: var(--color-primary-600);
+  text-decoration: none;
+  transition: color 200ms ease-in-out;
+}
+
+a:hover {
+  color: var(--color-primary-700);
+}
+
+/* Enhanced button base styling */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 200ms ease-in-out;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Smooth transitions for professional feel */
+* {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
+    transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
