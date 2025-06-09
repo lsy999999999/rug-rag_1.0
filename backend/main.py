@@ -1,4 +1,5 @@
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.core.readers.base import BaseReader
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.openai_like import OpenAILikeEmbedding
@@ -19,19 +20,24 @@ Settings.embed_model = OpenAILikeEmbedding(
 dotenv.load_dotenv()
 
 reader = DoclingReader(export_type=DoclingReader.ExportType.JSON)
-file_extractor = {
+file_extractor: dict[str, BaseReader] = {
     ".docx": reader,
-    ".pptx": reader,
+    ".pptx": reader, 
     ".pdf": reader,
+    ".xlsx": reader,
 }
 node_parser = DoclingNodeParser(
     chunker=HybridChunker(tokenizer="Qwen/Qwen3-Embedding-4B", max_tokens=10240)
 )
 
-# Create a RAG tool using LlamaIndex
 documents = SimpleDirectoryReader(
-    "data", recursive=True, file_extractor=file_extractor
+    "data", 
+    recursive=True, 
+    file_extractor=file_extractor,
+    encoding="utf-8",
+    required_exts=[".pdf", ".docx", ".pptx", ".xlsx"]
 ).load_data(show_progress=True)
+
 index = VectorStoreIndex.from_documents(
     documents,
     transformations=[node_parser],
@@ -47,24 +53,22 @@ async def search_documents(query: str) -> str:
     return str(response)
 
 
-# Create an enhanced workflow with both tools
 agent = FunctionAgent(
     tools=[search_documents],
     llm=OpenAI(
         model="deepseek-chat",
         api_key=os.getenv("OPENAI_API_KEY"),
         api_base=os.getenv("OPENAI_API_BASE"),
+        is_custom_model=True,
     ),
     system_prompt="""You are a helpful assistant that can search through documents to answer questions about Renmin University of China.""",
 )
 
 
-# Now we can ask questions about the documents or do calculations
 async def main():
     response = await agent.run("中国人民大学在第五轮学科评估中的结果如何？")
     print(response)
 
 
-# Run the agent
 if __name__ == "__main__":
     asyncio.run(main())
