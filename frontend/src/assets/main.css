@@ -163,3 +163,205 @@ button:disabled {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* Tailwind V4 正确语法的公共组件样式 */
+
+/* Card Components */
+@utility card {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+}
+
+@utility card-header {
+  @apply p-6 border-b border-gray-200 bg-gray-50;
+}
+
+@utility card-body {
+  @apply p-6;
+}
+
+@utility card-footer {
+  @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+}
+
+/* Form Components */
+@utility form-group {
+  @apply space-y-2;
+}
+
+@utility form-label {
+  @apply flex items-center gap-2 text-sm font-medium text-gray-700;
+}
+
+@utility form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm 
+         focus:ring-2 focus:ring-red-500 focus:border-red-500 
+         transition-colors;
+}
+
+@utility form-textarea {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm 
+         resize-y min-h-[80px] font-sans
+         focus:ring-2 focus:ring-red-500 focus:border-red-500 
+         transition-colors;
+}
+
+@utility form-select {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
+         focus:ring-2 focus:ring-red-500 focus:border-red-500 
+         transition-colors;
+}
+
+/* Button Components */
+@utility btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium 
+         rounded-lg transition-colors focus:ring-2 focus:ring-offset-2;
+}
+
+@utility btn-primary {
+  @apply btn bg-red-600 text-white hover:bg-red-700 
+         focus:ring-red-500 disabled:opacity-60;
+}
+
+@utility btn-secondary {
+  @apply btn bg-white text-gray-700 border border-gray-300 
+         hover:bg-gray-50 focus:ring-gray-500 disabled:opacity-60;
+}
+
+@utility btn-success {
+  @apply btn bg-green-600 text-white hover:bg-green-700 
+         focus:ring-green-500 disabled:opacity-60;
+}
+
+@utility btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700 
+         focus:ring-red-500 disabled:opacity-60;
+}
+
+/* Tag Components */
+@utility tag {
+  @apply inline-flex items-center gap-1 px-2 py-1 text-xs font-medium 
+         rounded-md;
+}
+
+@utility tag-blue {
+  @apply tag bg-blue-100 text-blue-800;
+}
+
+@utility tag-green {
+  @apply tag bg-green-100 text-green-800;
+}
+
+@utility tag-red {
+  @apply tag bg-red-100 text-red-800;
+}
+
+/* Modal Components */
+@utility modal-overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
+}
+
+@utility modal-container {
+  @apply card w-full flex flex-col overflow-hidden;
+  max-width: 56rem;
+  max-height: 90vh;
+  min-height: 60vh;
+}
+
+@utility modal-header {
+  @apply card-header flex items-center justify-between flex-shrink-0;
+}
+
+@utility modal-title {
+  @apply flex items-center gap-3 text-xl font-semibold text-gray-900;
+}
+
+@utility modal-body {
+  @apply flex-1 overflow-y-auto min-h-0;
+}
+
+/* Section Components */
+@utility section {
+  @apply space-y-4;
+}
+
+@utility section-title {
+  @apply flex items-center gap-2 text-lg font-semibold text-gray-900;
+}
+
+@utility section-description {
+  @apply text-sm text-gray-600;
+}
+
+/* File Components */
+@utility file-info {
+  @apply flex items-center gap-3;
+}
+
+@utility file-name {
+  @apply text-lg font-semibold text-gray-900 truncate;
+}
+
+@utility file-details {
+  @apply text-sm text-gray-600;
+}
+
+/* Array Input Components */
+@utility array-input {
+  @apply border border-gray-300 rounded-lg p-3 space-y-2;
+}
+
+@utility array-items {
+  @apply flex flex-wrap gap-2;
+}
+
+@utility array-tag {
+  @apply tag-blue;
+}
+
+@utility array-tag-remove {
+  @apply text-blue-600 hover:text-blue-800 transition-colors;
+}
+
+@utility array-input-field {
+  @apply border-0 outline-0 text-sm flex-1 min-w-[120px] bg-transparent;
+}
+
+/* Status Components */
+@utility status-badge {
+  @apply tag;
+}
+
+@utility status-uploading {
+  @apply tag-blue;
+}
+
+@utility status-success {
+  @apply tag-green;
+}
+
+@utility status-error {
+  @apply tag-red;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    @apply p-2;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
+  .modal-container {
+    @apply max-h-[95vh];
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    @apply p-0;
+    align-items: flex-end;
+  }
+
+  .modal-container {
+    @apply rounded-t-xl rounded-b-none max-h-[90vh] w-full;
+  }
+}

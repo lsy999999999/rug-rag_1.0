@@ -1,6 +1,5 @@
 <template>
   <div class="chat-demo">
-    <!-- Sidebar -->
     <ChatSidebar
       :sessions="sessions"
       :current-session-id="currentSession?.id"
@@ -9,25 +8,37 @@
       @new-session="handleNewSession"
     />
 
-    <!-- Main Chat Area -->
     <div class="chat-main">
-      <!-- Header -->
       <div class="chat-header">
         <div class="flex items-center space-x-3">
           <h2 class="text-xl font-semibold text-gray-900">
             {{ currentSession?.title || '新对话' }}
           </h2>
           <div class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">在线</div>
+          <!-- 文件上传状态指示器 -->
+          <div
+            v-if="hasActiveUploads"
+            class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1"
+          >
+            <Icon name="cloud_upload" size="xs" class="animate-pulse" />
+            上传中
+          </div>
         </div>
-        <div class="flex items-center space-x-2 text-sm text-gray-500">
-          <Icon name="schedule" size="sm" />
-          <span>响应时间通常在 2-3 秒</span>
+        <div class="flex items-center space-x-4">
+          <!-- 文档模板状态 -->
+          <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <Icon name="description" size="sm" />
+            <span>支持 {{ documentTemplates.length }} 种文档类型</span>
+          </div>
+          <div class="flex items-center space-x-2 text-sm text-gray-500">
+            <Icon name="schedule" size="sm" />
+            <span>响应时间通常在 2-3 秒</span>
+          </div>
         </div>
       </div>
 
-      <!-- Messages Container -->
       <div class="messages-container" ref="messagesContainer">
-        <!-- Welcome Message for Empty Chat -->
+        <!-- 欢迎页面 -->
         <div v-if="currentMessages.length === 0" class="welcome-section">
           <div class="welcome-content">
             <div class="welcome-icon">
@@ -36,10 +47,21 @@
             <h3 class="welcome-title">欢迎使用人大智慧行政助手</h3>
             <p class="welcome-description">
               我是基于 RAG 技术驱动的智慧行政大模型，可以帮助您解答各类行政事务相关问题。
-              请选择下方的常见问题或直接输入您的问题。
+              您可以直接提问，或者上传相关文档来扩展知识库。
             </p>
 
-            <!-- Common Questions -->
+            <!-- 文件上传区域 -->
+            <div class="upload-section">
+              <FileUploadArea
+                :disabled="isLoading"
+                :is-uploading="hasActiveUploads"
+                :upload-progress="averageUploadProgress"
+                @files-selected="handleFilesSelected"
+                @upload-error="handleUploadError"
+              />
+            </div>
+
+            <!-- 常见问题 -->
             <div class="common-questions">
               <h4 class="questions-title">常见问题</h4>
               <div class="questions-grid">
@@ -60,20 +82,21 @@
           </div>
         </div>
 
-        <!-- Chat Messages -->
+        <!-- 消息列表 -->
         <div v-else class="messages-list">
           <ChatMessage
             v-for="message in currentMessages"
             :key="message.id"
             :message="message"
-            :animate-in="message.id === lastMessageId"
+            :upload-progress="getMessageUploadProgress(message.id)"
+            @edit-metadata="handleEditMetadata"
+            @confirm-upload="handleConfirmUpload"
+            @cancel-upload="handleCancelUpload"
+            @retry-upload="handleRetryUpload"
           />
-
-          <!-- Typing Indicator -->
-          <ChatMessage v-if="isTyping" :message="typingMessage" :is-typing="true" />
         </div>
 
-        <!-- Scroll to bottom button -->
+        <!-- 滚动到底部按钮 -->
         <Transition name="fade">
           <button v-if="showScrollButton" @click="scrollToBottom" class="scroll-button">
             <Icon name="keyboard_arrow_down" size="sm" />
@@ -81,16 +104,38 @@
         </Transition>
       </div>
 
-      <!-- Input Area -->
+      <!-- 输入区域 -->
       <div class="input-container">
         <ChatInput
           :disabled="isLoading"
           :is-loading="isLoading"
           :show-suggestions="currentMessages.length === 0"
           @send="handleSendMessage"
+          @upload-files="handleFilesSelected"
         />
       </div>
     </div>
+
+    <!-- 元数据编辑弹窗 -->
+    <MetadataEditorModal
+      :is-open="showMetadataEditor"
+      :file-info="editingFileInfo"
+      :document-templates="documentTemplates"
+      :is-submitting="isConfirming"
+      @close="handleCloseMetadataEditor"
+      @confirm="handleMetadataConfirm"
+    />
+
+    <!-- 错误提示 -->
+    <Transition name="slide-up">
+      <div v-if="errorMessage" class="error-toast">
+        <Icon name="error" size="sm" color="red-600" />
+        <span>{{ errorMessage }}</span>
+        <button @click="clearError" class="ml-2">
+          <Icon name="close" size="xs" />
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -100,22 +145,48 @@ import { useChatStore } from '@/stores/chat'
 import ChatSidebar from '@/components/chat/ChatSidebar.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import FileUploadArea from '@/components/common/FileUploadArea.vue'
+import MetadataEditorModal from '@/components/common/MetadataEditorModal.vue'
 import Icon from '@/components/common/Icon.vue'
-import type { ChatMessage as ChatMessageType } from '@/services/api'
+import type { FileInfo } from '@/services/api'
 
 const chatStore = useChatStore()
 const messagesContainer = ref<HTMLElement>()
-const lastMessageId = ref<string>()
 const showScrollButton = ref(false)
+const showMetadataEditor = ref(false)
+const editingFileInfo = ref<FileInfo | null>(null)
+const isConfirming = ref(false)
+const errorMessage = ref('')
 
 // Computed properties
 const currentSession = computed(() => chatStore.currentSession)
 const currentMessages = computed(() => chatStore.currentMessages)
 const sessions = computed(() => chatStore.sessions)
 const isLoading = computed(() => chatStore.isLoading)
-const isTyping = computed(() => chatStore.isTyping)
+const documentTemplates = computed(() => chatStore.documentTemplates)
 
-// Common questions for welcome screen
+// 检查是否有活跃的上传
+const hasActiveUploads = computed(() => {
+  return currentMessages.value.some(
+    (msg) => msg.is_file_message && ['uploading', 'confirming'].includes(msg.upload_status || ''),
+  )
+})
+
+// 计算平均上传进度
+const averageUploadProgress = computed(() => {
+  const uploadingMessages = currentMessages.value.filter(
+    (msg) => msg.is_file_message && msg.upload_status === 'uploading',
+  )
+
+  if (uploadingMessages.length === 0) return 0
+
+  const totalProgress = uploadingMessages.reduce((sum, msg) => {
+    return sum + chatStore.getUploadProgress(msg.id)
+  }, 0)
+
+  return totalProgress / uploadingMessages.length
+})
+
 const commonQuestions = ref([
   {
     title: '成绩查询',
@@ -161,42 +232,97 @@ const commonQuestions = ref([
   },
 ])
 
-// Typing indicator message
-const typingMessage = computed(
-  (): ChatMessageType => ({
-    id: 'typing',
-    role: 'assistant',
-    content: '',
-    timestamp: new Date(),
-  }),
-)
-
-// Event handlers
+// Methods
 const handleSelectSession = (sessionId: string) => {
   chatStore.switchToSession(sessionId)
 }
 
 const handleNewSession = async () => {
   await chatStore.createNewSession()
-  scrollToBottom()
 }
 
 const handleSendMessage = async (content: string) => {
-  const previousMessageCount = currentMessages.value.length
-  await chatStore.sendMessage(content)
-
-  // Track the last message for animation
-  const newMessages = currentMessages.value
-  if (newMessages.length > previousMessageCount) {
-    lastMessageId.value = newMessages[newMessages.length - 1].id
-  }
-
-  await nextTick()
-  scrollToBottom()
+  await chatStore.streamMessage(content)
 }
 
 const handleQuestionClick = (question: string) => {
   handleSendMessage(question)
+}
+
+const handleFilesSelected = async (files: File[]) => {
+  await chatStore.uploadFiles(files)
+}
+
+const handleUploadError = (error: string) => {
+  showError(error)
+}
+
+const handleEditMetadata = (messageId: string) => {
+  const message = currentMessages.value.find((m) => m.id === messageId)
+  if (message?.file_info) {
+    editingFileInfo.value = message.file_info
+    showMetadataEditor.value = true
+  }
+}
+
+const handleConfirmUpload = async (messageId: string) => {
+  const message = currentMessages.value.find((m) => m.id === messageId)
+  if (message?.file_info) {
+    // 直接确认，使用AI提取的元数据
+    await chatStore.confirmDocument(messageId, message.file_info.extracted_metadata)
+  }
+}
+
+const handleCancelUpload = (messageId: string) => {
+  chatStore.cancelFileUpload(messageId)
+}
+
+const handleRetryUpload = async (messageId: string) => {
+  await chatStore.retryFileUpload(messageId)
+}
+
+const handleCloseMetadataEditor = () => {
+  showMetadataEditor.value = false
+  editingFileInfo.value = null
+}
+
+const handleMetadataConfirm = async (data: {
+  fileId: string
+  metadata: Record<string, any>
+  filename: string
+}) => {
+  isConfirming.value = true
+
+  try {
+    // 查找对应的消息
+    const message = currentMessages.value.find((m) => m.file_info?.file_id === data.fileId)
+
+    if (message) {
+      await chatStore.confirmDocument(message.id, data.metadata)
+      showMetadataEditor.value = false
+      editingFileInfo.value = null
+    }
+  } catch (error) {
+    showError(error instanceof Error ? error.message : '确认文档失败')
+  } finally {
+    isConfirming.value = false
+  }
+}
+
+const getMessageUploadProgress = (messageId: string) => {
+  return chatStore.getUploadProgress(messageId)
+}
+
+const showError = (message: string) => {
+  errorMessage.value = message
+  // 3秒后自动清除错误
+  setTimeout(() => {
+    errorMessage.value = ''
+  }, 3000)
+}
+
+const clearError = () => {
+  errorMessage.value = ''
 }
 
 const scrollToBottom = () => {
@@ -229,24 +355,30 @@ onMounted(async () => {
   scrollToBottom()
 })
 
-// Watch for new messages to auto-scroll
+// Watchers
 watch(
   () => currentMessages.value.length,
-  async () => {
-    await nextTick()
-    if (!showScrollButton.value) {
+  async (newLength, oldLength) => {
+    if (newLength > oldLength) {
+      await nextTick()
       scrollToBottom()
     }
   },
+  { deep: true },
 )
 
-// Watch for typing state changes
 watch(
-  () => isTyping.value,
-  async (newValue) => {
-    if (newValue) {
-      await nextTick()
-      scrollToBottom()
+  () => {
+    const messages = currentMessages.value
+    return messages.length > 0 ? messages[messages.length - 1].content : ''
+  },
+  async () => {
+    await nextTick()
+    if (messagesContainer.value) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+      if (scrollHeight - scrollTop - clientHeight < 200) {
+        scrollToBottom()
+      }
     }
   },
 )
@@ -256,7 +388,7 @@ watch(
 .chat-demo {
   display: flex;
   height: 100vh;
-  background-color: rgb(243 244 246); /* bg-gray-100 */
+  background-color: rgb(243 244 246);
 }
 
 .chat-main {
@@ -264,6 +396,7 @@ watch(
   display: flex;
   flex-direction: column;
   background-color: white;
+  position: relative;
 }
 
 .chat-header {
@@ -273,6 +406,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .messages-container {
@@ -286,7 +421,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   padding: 2rem;
 }
 
@@ -294,12 +429,13 @@ watch(
   max-width: 64rem;
   margin: 0 auto;
   text-align: center;
+  width: 100%;
 }
 
 .welcome-icon {
   width: 4rem;
   height: 4rem;
-  background-color: rgb(254 226 226); /* bg-red-100 */
+  background-color: rgb(254 226 226);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -319,6 +455,13 @@ watch(
   color: rgb(75 85 99);
   margin-bottom: 2rem;
   line-height: 1.75;
+}
+
+.upload-section {
+  margin-bottom: 3rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .common-questions {
@@ -355,7 +498,7 @@ watch(
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem;
-  background-color: rgb(249 250 251); /* bg-gray-50 */
+  background-color: rgb(249 250 251);
   border-radius: 0.75rem;
   transition: all 0.2s;
   text-align: left;
@@ -364,11 +507,11 @@ watch(
 }
 
 .question-card:hover {
-  background-color: rgb(243 244 246); /* hover:bg-gray-100 */
+  background-color: rgb(243 244 246);
   box-shadow:
     0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1); /* hover:shadow-md */
-  transform: scale(1.05); /* hover:scale-105 */
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transform: scale(1.02);
 }
 
 .question-text {
@@ -383,7 +526,7 @@ watch(
 }
 
 .question-card:hover .question-card-title {
-  color: rgb(220 38 38); /* group-hover:text-red-600 */
+  color: rgb(220 38 38);
 }
 
 .question-card-desc {
@@ -420,6 +563,8 @@ watch(
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  cursor: pointer;
+  z-index: 10;
 }
 
 .scroll-button:hover {
@@ -427,7 +572,38 @@ watch(
   transform: scale(1.1);
 }
 
-/* Transition animations */
+.error-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 24rem;
+  z-index: 50;
+}
+
+.error-toast button {
+  background: none;
+  border: none;
+  color: #991b1b;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.error-toast button:hover {
+  background-color: #fecaca;
+}
+
+/* 动画 */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -438,7 +614,18 @@ watch(
   opacity: 0;
 }
 
-/* Custom scrollbar */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* 自定义滚动条 */
 .messages-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -454,5 +641,32 @@ watch(
 
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .chat-header {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .welcome-section {
+    padding: 1rem;
+  }
+
+  .messages-list {
+    padding: 1rem;
+  }
+
+  .input-container {
+    padding: 1rem;
+  }
+
+  .error-toast {
+    right: 1rem;
+    left: 1rem;
+    max-width: none;
+  }
 }
 </style>

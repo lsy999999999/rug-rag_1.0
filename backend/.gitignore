@@ -1,7 +1,46 @@
-.env
-data/
-.venv/
-.DS_Store
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-storage/
+# 环境文件
+.env
+.venv
+env/
+venv/
+
+# 数据目录
+data/storage/*
+!data/storage/.gitkeep
+data/temp_uploads/*
+!data/temp_uploads/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+data/documents/*
+!data/documents/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
