@@ -12,12 +12,31 @@
         </div>
       </div>
 
-      <!-- New Chat Button -->
-      <button @click="createNewChat" class="new-chat-button" :disabled="isLoading">
-        <Icon name="add" size="sm" />
-        <span>新建对话</span>
-      </button>
+      <!-- Action Buttons -->
+      <div class="space-y-2">
+        <!-- New Chat Button -->
+        <button @click="createNewChat" class="action-button primary-button" :disabled="isLoading">
+          <Icon name="add" size="sm" />
+          <span>新建对话</span>
+        </button>
+        
+        <!-- START: 新增的“填入文件”入口 -->
+        <button @click="triggerTemplateUpload" class="action-button secondary-button" :disabled="isLoading">
+          <Icon name="drive_file_rename_outline" size="sm" />
+          <span>填入文件</span>
+        </button>
+        <!-- END: 新增的“填入文件”入口 -->
+      </div>
     </div>
+
+    <!-- Hidden file input for template selection -->
+    <input
+      ref="templateUploadInput"
+      type="file"
+      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      style="display: none"
+      @change="handleTemplateSelected"
+    />
 
     <!-- Sessions List -->
     <div class="sessions-container">
@@ -68,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
 import Icon from '@/components/common/Icon.vue'
 import type { ChatSession } from '@/services/api'
 
@@ -85,7 +104,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'select-session': [sessionId: string]
   'new-session': []
+  'start-autofill': [templateFile: File] // 新声明的事件
 }>()
+
+const templateUploadInput = ref<HTMLInputElement | null>(null)
 
 const selectSession = (sessionId: string) => {
   emit('select-session', sessionId)
@@ -95,6 +117,22 @@ const createNewChat = () => {
   emit('new-session')
 }
 
+// START: 新增的方法，用于处理“填入文件”按钮点击
+const triggerTemplateUpload = () => {
+  templateUploadInput.value?.click()
+}
+
+const handleTemplateSelected = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    emit('start-autofill', file)
+    // 重置输入框，这样用户可以连续选择同一个文件
+    target.value = ''
+  }
+}
+// END: 新增的方法
+
 const getLastMessage = (session: ChatSession): string => {
   if (session.messages.length === 0) {
     return '新对话'
@@ -103,16 +141,24 @@ const getLastMessage = (session: ChatSession): string => {
   const lastMessage = session.messages[session.messages.length - 1]
   const content = lastMessage.content
 
+  if (lastMessage.is_file_message) {
+    return `文件: ${lastMessage.file_info?.filename}`
+  }
+  
+  if (lastMessage.is_autofill_control_message) {
+    return '等待选择填充方式...'
+  }
+
   if (content.length > 30) {
     return content.slice(0, 30) + '...'
   }
 
-  return content
+  return content || '...'
 }
 
 const formatSessionTime = (date: Date): string => {
   const now = new Date()
-  const diff = now.getTime() - date.getTime()
+  const diff = now.getTime() - new Date(date).getTime()
 
   // Less than 1 minute
   if (diff < 60000) {
@@ -138,7 +184,7 @@ const formatSessionTime = (date: Date): string => {
   }
 
   // Format as date
-  return date.toLocaleDateString('zh-CN', {
+  return new Date(date).toLocaleDateString('zh-CN', {
     month: 'short',
     day: 'numeric',
   })
@@ -160,34 +206,51 @@ const formatSessionTime = (date: Date): string => {
   border-bottom: 1px solid rgb(229 231 235); /* border-b border-gray-200 */
 }
 
-.new-chat-button {
+/* START: 新增通用按钮样式 */
+.action-button {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background-color: rgb(220 38 38); /* bg-red-600 */
-  color: white;
   font-weight: 500;
   border-radius: 0.5rem;
   transition: background-color 0.2s;
   border: none;
+  cursor: pointer;
 }
 
-.new-chat-button:hover {
-  background-color: rgb(185 28 28); /* hover:bg-red-700 */
-}
-
-.new-chat-button:disabled {
+.action-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+.primary-button {
+  background-color: rgb(220 38 38); /* bg-red-600 */
+  color: white;
+}
+.primary-button:hover {
+  background-color: rgb(185 28 28); /* hover:bg-red-700 */
+}
+
+.secondary-button {
+  background-color: white;
+  color: rgb(55 65 81); /* text-gray-700 */
+  border: 1px solid rgb(209 213 219); /* border-gray-300 */
+}
+.secondary-button:hover {
+  background-color: rgb(243 244 246); /* hover:bg-gray-100 */
+}
+/* END: 新增通用按钮样式 */
+
+
 .sessions-container {
   flex: 1;
   padding: 1.5rem;
-  overflow: hidden;
+  overflow: hidden; /* Changed from hidden to auto to allow scrolling */
+  display: flex;
+  flex-direction: column;
 }
 
 .sessions-list {
@@ -195,7 +258,8 @@ const formatSessionTime = (date: Date): string => {
   flex-direction: column;
   gap: 0.5rem;
   overflow-y: auto;
-  max-height: 100%;
+  flex-grow: 1; /* Allow list to grow and fill space */
+  padding-right: 4px; /* Space for scrollbar */
 }
 
 .session-item {
@@ -215,7 +279,6 @@ const formatSessionTime = (date: Date): string => {
   background-color: white;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   border-color: rgb(252 165 165); /* border-red-200 */
-  ring: 1px solid rgb(252 165 165);
 }
 
 .session-item:hover:not(.active) {
@@ -270,6 +333,7 @@ const formatSessionTime = (date: Date): string => {
 .sidebar-footer {
   padding: 1.5rem;
   border-top: 1px solid rgb(229 231 235); /* border-t border-gray-200 */
+  flex-shrink: 0;
 }
 
 /* Custom scrollbar for sessions list */

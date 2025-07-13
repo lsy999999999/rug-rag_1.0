@@ -60,7 +60,7 @@
           <textarea
             ref="textareaRef"
             v-model="inputValue"
-            :placeholder="getPlaceholder()"
+            :placeholder="placeholder"
             :disabled="disabled"
             @keydown="handleKeydown"
             @input="handleInput"
@@ -114,10 +114,12 @@ import { ref, computed, nextTick, watch } from 'vue'
 import Icon from '@/components/common/Icon.vue'
 import { FileUploadHelper } from '@/services/api'
 
+// --- START: MODIFIED PROPS to accept placeholder ---
 interface Props {
   disabled?: boolean
   isLoading?: boolean
   showSuggestions?: boolean
+  placeholder?: string // Add the placeholder prop
 }
 
 interface Emits {
@@ -129,7 +131,9 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   isLoading: false,
   showSuggestions: false,
+  placeholder: '输入您的问题，或拖拽文件到此处上传...', // Set a default value
 })
+// --- END: MODIFIED PROPS ---
 
 const emit = defineEmits<Emits>()
 
@@ -155,11 +159,8 @@ const canSend = computed(() => {
   )
 })
 
-const getPlaceholder = () => {
-  if (props.isLoading) return '正在处理中...'
-  if (pendingFiles.value.length > 0) return '输入消息或直接上传文件...'
-  return '输入您的问题，或拖拽文件到此处上传...'
-}
+// This function is now removed, as we will use the prop directly.
+// const getPlaceholder = () => { ... }
 
 const getFileIcon = (fileType: string) => {
   if (fileType.includes('pdf')) return 'picture_as_pdf'
@@ -226,15 +227,12 @@ const handleFileSelect = (e: Event) => {
 
 const addFiles = (files: File[]) => {
   const validFiles = files.filter((file) => {
-    // 检查文件类型
     if (!FileUploadHelper.isSupportedFileType(file)) {
       return false
     }
-    // 检查文件大小（50MB限制）
     if (file.size > 50 * 1024 * 1024) {
       return false
     }
-    // 检查是否重复
     if (pendingFiles.value.some((f) => f.name === file.name && f.size === file.size)) {
       return false
     }
@@ -280,8 +278,6 @@ const handleDragEnter = (e: DragEvent) => {
 const handleDragLeave = (e: DragEvent) => {
   e.preventDefault()
   e.stopPropagation()
-
-  // Only set isDragOver to false when leaving the entire input area
   const currentTarget = e.currentTarget as Node | null
   const relatedTarget = e.relatedTarget as Node | null
   if (currentTarget && (!relatedTarget || !currentTarget.contains(relatedTarget))) {
@@ -289,7 +285,6 @@ const handleDragLeave = (e: DragEvent) => {
   }
 }
 
-// 监听输入值变化，自动调整高度
 watch(inputValue, () => {
   adjustTextareaHeight()
 })

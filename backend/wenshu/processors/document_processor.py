@@ -15,6 +15,9 @@ from docling_core.types.doc.document import DoclingDocument
 from ..models.document_schemas import DOCUMENT_TYPE_REGISTRY, get_model_for_type
 from ..config import APIConfig
 
+import os
+from typing import List, Dict
+from docx import Document
 
 class DocumentProcessor:
     """Handle document processing and metadata extraction using Pydantic models and Docling
@@ -271,3 +274,5 @@ class DocumentProcessor:
             doc_type: self.get_document_schema(doc_type)
             for doc_type in DOCUMENT_TYPE_REGISTRY.keys()
         }
+
+#

@@ -5,6 +5,7 @@ from llama_index.core.callbacks import CallbackManager
 from .agents.callbacks import StreamingCallbackHandler
 from .api.chat import setup_chat_routes
 from .api.documents import setup_document_routes
+from .api.autofill import setup_autofill_routes
 
 # Import our modules
 from .config import APIConfig, init_settings, load_vector_index
@@ -71,6 +72,7 @@ def main() -> FastAPI:
     # Setup API routes
     setup_chat_routes(app, callback_handler)
     setup_document_routes(app, doc_processor, index)
+    setup_autofill_routes(app)
 
     # Health check endpoint
     @app.get("/health")
@@ -97,6 +99,7 @@ async def startup_event() -> None:
     # Setup routes after initialization
     setup_chat_routes(app, callback_handler)
     setup_document_routes(app, doc_processor, index)
+    setup_autofill_routes(app)
 
     @app.get("/health")
     async def health_check():

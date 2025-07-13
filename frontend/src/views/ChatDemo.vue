@@ -6,6 +6,7 @@
       :is-loading="isLoading"
       @select-session="handleSelectSession"
       @new-session="handleNewSession"
+      @start-autofill="handleStartAutofill"
     />
 
     <div class="chat-main">
@@ -14,8 +15,15 @@
           <h2 class="text-xl font-semibold text-gray-900">
             {{ currentSession?.title || '新对话' }}
           </h2>
-          <div class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">在线</div>
-          <!-- 文件上传状态指示器 -->
+          <div
+            v-if="!chatStore.isAutofillMode"
+            class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+          >
+            智慧问答
+          </div>
+          <div v-else class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+            智能填表
+          </div>
           <div
             v-if="hasActiveUploads"
             class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1"
@@ -25,7 +33,6 @@
           </div>
         </div>
         <div class="flex items-center space-x-4">
-          <!-- 文档模板状态 -->
           <div class="flex items-center space-x-2 text-sm text-gray-500">
             <Icon name="description" size="sm" />
             <span>支持 {{ documentTemplates.length }} 种文档类型</span>
@@ -38,7 +45,6 @@
       </div>
 
       <div class="messages-container" ref="messagesContainer">
-        <!-- 欢迎页面 -->
         <div v-if="currentMessages.length === 0" class="welcome-section">
           <div class="welcome-content">
             <div class="welcome-icon">
@@ -49,8 +55,6 @@
               我是基于 RAG 技术驱动的智慧行政大模型，可以帮助您解答各类行政事务相关问题。
               您可以直接提问，或者上传相关文档来扩展知识库。
             </p>
-
-            <!-- 文件上传区域 -->
             <div class="upload-section">
               <FileUploadArea
                 :disabled="isLoading"
@@ -60,8 +64,6 @@
                 @upload-error="handleUploadError"
               />
             </div>
-
-            <!-- 常见问题 -->
             <div class="common-questions">
               <h4 class="questions-title">常见问题</h4>
               <div class="questions-grid">
@@ -82,21 +84,30 @@
           </div>
         </div>
 
-        <!-- 消息列表 -->
         <div v-else class="messages-list">
-          <ChatMessage
-            v-for="message in currentMessages"
-            :key="message.id"
-            :message="message"
-            :upload-progress="getMessageUploadProgress(message.id)"
-            @edit-metadata="handleEditMetadata"
-            @confirm-upload="handleConfirmUpload"
-            @cancel-upload="handleCancelUpload"
-            @retry-upload="handleRetryUpload"
-          />
+          <div v-for="message in currentMessages" :key="message.id">
+            <AutofillControlMessage
+              v-if="message.is_autofill_control_message"
+              :message="message"
+              @content-provided="handleContentProvided"
+            />
+            <AutofillPreviewMessage
+              v-else-if="message.autofill_preview"
+              :message="message"
+              @download="handleDownload"
+            />
+            <ChatMessage
+              v-else
+              :message="message"
+              :upload-progress="getMessageUploadProgress(message.id)"
+              @edit-metadata="handleEditMetadata"
+              @confirm-upload="handleConfirmUpload"
+              @cancel-upload="handleCancelUpload"
+              @retry-upload="handleRetryUpload"
+            />
+          </div>
         </div>
 
-        <!-- 滚动到底部按钮 -->
         <Transition name="fade">
           <button v-if="showScrollButton" @click="scrollToBottom" class="scroll-button">
             <Icon name="keyboard_arrow_down" size="sm" />
@@ -104,19 +115,18 @@
         </Transition>
       </div>
 
-      <!-- 输入区域 -->
       <div class="input-container">
         <ChatInput
-          :disabled="isLoading"
+          :disabled="isLoading || chatStore.isAwaitingAutofillContent"
           :is-loading="isLoading"
           :show-suggestions="currentMessages.length === 0"
+          :placeholder="inputPlaceholder"
           @send="handleSendMessage"
           @upload-files="handleFilesSelected"
         />
       </div>
     </div>
 
-    <!-- 元数据编辑弹窗 -->
     <MetadataEditorModal
       :is-open="showMetadataEditor"
       :file-info="editingFileInfo"
@@ -126,7 +136,6 @@
       @confirm="handleMetadataConfirm"
     />
 
-    <!-- 错误提示 -->
     <Transition name="slide-up">
       <div v-if="errorMessage" class="error-toast">
         <Icon name="error" size="sm" color="red-600" />
@@ -142,6 +151,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
+import { chatAPI } from '@/services/api'
 import ChatSidebar from '@/components/chat/ChatSidebar.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -149,6 +159,8 @@ import FileUploadArea from '@/components/common/FileUploadArea.vue'
 import MetadataEditorModal from '@/components/common/MetadataEditorModal.vue'
 import Icon from '@/components/common/Icon.vue'
 import type { FileInfo } from '@/services/api'
+import AutofillControlMessage from '@/components/chat/AutofillControlMessage.vue'
+import AutofillPreviewMessage from '@/components/chat/AutofillPreviewMessage.vue'
 
 const chatStore = useChatStore()
 const messagesContainer = ref<HTMLElement>()
@@ -165,26 +177,35 @@ const sessions = computed(() => chatStore.sessions)
 const isLoading = computed(() => chatStore.isLoading)
 const documentTemplates = computed(() => chatStore.documentTemplates)
 
-// 检查是否有活跃的上传
 const hasActiveUploads = computed(() => {
   return currentMessages.value.some(
     (msg) => msg.is_file_message && ['uploading', 'confirming'].includes(msg.upload_status || ''),
   )
 })
 
-// 计算平均上传进度
 const averageUploadProgress = computed(() => {
   const uploadingMessages = currentMessages.value.filter(
     (msg) => msg.is_file_message && msg.upload_status === 'uploading',
   )
-
   if (uploadingMessages.length === 0) return 0
-
-  const totalProgress = uploadingMessages.reduce((sum, msg) => {
-    return sum + chatStore.getUploadProgress(msg.id)
-  }, 0)
-
+  const totalProgress = uploadingMessages.reduce(
+    (sum, msg) => sum + chatStore.getUploadProgress(msg.id),
+    0,
+  )
   return totalProgress / uploadingMessages.length
+})
+
+// ** NEW COMPUTED PROPERTY FOR DYNAMIC PLACEHOLDER **
+const inputPlaceholder = computed(() => {
+  if (chatStore.isAutofillMode) {
+    if (chatStore.isAwaitingAutofillContent) {
+      return '请选择一种方式提供填充内容...'
+    }
+    // This is the multi-turn prompt you requested
+    return '请继续输入内容以填入文件，例如：我的专业是计算机科学...'
+  }
+  // Default placeholder for RAG chat
+  return '输入您的问题，或将文件拖到此处上传...'
 })
 
 const commonQuestions = ref([
@@ -253,6 +274,29 @@ const handleFilesSelected = async (files: File[]) => {
   await chatStore.uploadFiles(files)
 }
 
+const handleStartAutofill = async (templateFile: File) => {
+  await chatStore.createNewSession()
+  chatStore.startAutofillMode(templateFile)
+}
+
+const handleContentProvided = async (payload: {
+  mode: 'conversational' | 'from_file' | 'from_kb'
+  data?: File | string
+}) => {
+  await chatStore.provideAutofillContent(payload.mode, payload.data)
+}
+
+const handleDownload = async () => {
+  if (chatStore.autofillSessionId) {
+    try {
+      await chatAPI.downloadAutofillResult(chatStore.autofillSessionId)
+      chatStore.endAutofillMode()
+    } catch (e) {
+      showError(e instanceof Error ? e.message : '下载失败')
+    }
+  }
+}
+
 const handleUploadError = (error: string) => {
   showError(error)
 }
@@ -268,7 +312,6 @@ const handleEditMetadata = (messageId: string) => {
 const handleConfirmUpload = async (messageId: string) => {
   const message = currentMessages.value.find((m) => m.id === messageId)
   if (message?.file_info) {
-    // 直接确认，使用AI提取的元数据
     await chatStore.confirmDocument(messageId, message.file_info.extracted_metadata)
   }
 }
@@ -292,11 +335,8 @@ const handleMetadataConfirm = async (data: {
   filename: string
 }) => {
   isConfirming.value = true
-
   try {
-    // 查找对应的消息
     const message = currentMessages.value.find((m) => m.file_info?.file_id === data.fileId)
-
     if (message) {
       await chatStore.confirmDocument(message.id, data.metadata)
       showMetadataEditor.value = false
@@ -315,7 +355,6 @@ const getMessageUploadProgress = (messageId: string) => {
 
 const showError = (message: string) => {
   errorMessage.value = message
-  // 3秒后自动清除错误
   setTimeout(() => {
     errorMessage.value = ''
   }, 3000)
@@ -336,26 +375,21 @@ const scrollToBottom = () => {
 
 const handleScroll = () => {
   if (!messagesContainer.value) return
-
   const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
   const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
-
   showScrollButton.value = !isNearBottom && currentMessages.value.length > 0
 }
 
-// Lifecycle
+// Lifecycle & Watchers
 onMounted(async () => {
   await chatStore.initialize()
-
   if (messagesContainer.value) {
     messagesContainer.value.addEventListener('scroll', handleScroll)
   }
-
   await nextTick()
   scrollToBottom()
 })
 
-// Watchers
 watch(
   () => currentMessages.value.length,
   async (newLength, oldLength) => {

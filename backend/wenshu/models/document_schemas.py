@@ -20,7 +20,7 @@ class AdministrativeDocument(BaseModel):
     """行政文件元数据模型"""
 
     document_type: str = Field(..., description="文件类型")
-    issuing_department: str = Field(..., description="发文单位")
+    issuing_department: Optional[str] = Field(..., description="发文单位")
     document_number: Optional[str] = Field(None, description="文号")
     subject: str = Field(..., description="主题")
     issue_date: Optional[str] = Field(None, description="发文日期")

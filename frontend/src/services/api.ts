@@ -1,4 +1,13 @@
-// services/api.ts
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export interface DocumentSource {
   file_name: string
@@ -101,14 +110,19 @@ export interface ChatMessage {
   timestamp: Date
   status?: string
   sources?: DocumentSource[]
-  steps: ChatStep[] // 改为非可选，确保始终存在
-  document_results?: DocumentSource[] // 专门用于卡片式文档搜索结果
+  steps: ChatStep[]
+  document_results?: DocumentSource[]
   tool_result?: ChatMessageToolResult
 
   // 文件上传相关字段
   upload_status?: UploadStatus
   file_info?: FileInfo
-  is_file_message?: boolean // 标识这是一个文件上传消息
+  is_file_message?: boolean
+
+  // START: 为智能填表流程新增的属性
+  is_autofill_control_message?: boolean // 标识这是一个模式选择消息
+  autofill_preview?: any // 用于存放填表的预览结果
+  // END: 新增属性
 }
 
 export interface ChatSession {
@@ -144,10 +158,18 @@ export interface ChatAPI {
   confirmDocument(request: DocumentConfirmRequest): Promise<DocumentConfirmResponse>
   getDocumentTemplates(): Promise<DocumentTemplatesResponse>
   getDocumentSchema(docType: string): Promise<DocumentSchema>
+
+  // Autofill related methods
+  startAutofill(templateFile: File, contentFiles: File[], conversationalQuery?: string): Promise<{ session_id: string; preview: any; }>;
+  startAutofillFromFile(templateFile: File, contentFile: File): Promise<{ session_id: string; preview: any; }>;
+  refineAutofill(sessionId: string, feedback: string): Promise<{ preview: any; }>;
+  downloadAutofillResult(sessionId: string): Promise<void>;
 }
 
 class RealChatAPI implements ChatAPI {
   private readonly BASE_URL = 'http://127.0.0.1:8080'
+
+  // ... (existing streamChat, uploadDocument, etc. methods) ...
 
   async streamChat(
     query: string,
@@ -306,6 +328,92 @@ class RealChatAPI implements ChatAPI {
       console.error(`Failed to fetch schema for document type ${docType}:`, error)
       throw error
     }
+  }
+
+  // --- Autofill Methods ---
+
+  async startAutofill(templateFile: File, contentFiles: File[]): Promise<{ session_id: string; preview: any; }> {
+    const formData = new FormData();
+    formData.append('template_file', templateFile);
+    contentFiles.forEach(file => {
+      formData.append('content_files', file);
+    });
+
+    const response = await fetch(`${this.BASE_URL}/autofill/start`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(`Failed to start autofill session: ${errorData.detail}`);
+    }
+    return response.json();
+  }
+
+  async startAutofillFromFile(templateFile: File, contentFile: File): Promise<{ session_id: string; preview: any; }> {
+    const formData = new FormData();
+    formData.append('template_file', templateFile);
+    formData.append('content_file', contentFile);
+
+    const response = await fetch(`${this.BASE_URL}/autofill/start_from_file`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(`Failed to start autofill from file session: ${errorData.detail}`);
+    }
+    return response.json();
+  }
+
+  async refineAutofill(sessionId: string, feedback: string): Promise<{ preview: any; }> {
+    const response = await fetch(`${this.BASE_URL}/autofill/refine`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ session_id: sessionId, feedback: feedback }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(`Failed to refine autofill session: ${errorData.detail}`);
+    }
+    return response.json();
+  }
+
+  async downloadAutofillResult(sessionId: string): Promise<void> {
+    const response = await fetch(`${this.BASE_URL}/autofill/download/${sessionId}`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(`Failed to download file: ${errorData.detail}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    
+    // Extract filename from content-disposition header if available
+    const disposition = response.headers.get('content-disposition');
+    let filename = `filled_document_${sessionId.substring(0, 8)}.docx`;
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+      const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+      const matches = filenameRegex.exec(disposition);
+      if (matches != null && matches[1]) {
+        filename = matches[1].replace(/['"]/g, '');
+      }
+    }
+    
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
   }
 
   private sessions: Map<string, ChatSession> = new Map()
